@@ -126,13 +126,13 @@ def run_once():
             for kc in KEYSPACE_COUNTERS:
                 if kc in stats['keyspaces'][ks]:
                     send_metric(out_sock, '{}.keyspace.{}'.format(
-                        STATSD_PREFIX, kc), 'c',
+                        statsd_prefix, kc), 'c',
                     float(stats['keyspaces'][ks][kc]))
 
             for kg in KEYSPACE_GAUGES:
                 if kg in stats['keyspaces'][ks]:
                     send_metric(out_sock, '{}.keyspace.{}'.format(
-                        STATSD_PREFIX, kg), 'g',
+                        statsd_prefix, kg), 'g',
                         float(stats['keyspaces'][ks][kg]))
 
         out_sock.close()

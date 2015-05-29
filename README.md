@@ -13,8 +13,9 @@ $ docker run -e REDIS_HOST=10.0.0.1 -e STATSD_HOST=10.0.0.10 redis-statsd
 ## Available Environment Variables
 
 * `REDIS_HOST`: Redis hostname/IP (default: `localhost`)
-* `REDIS_PORT`: Redis port (default: `6379`)
+* `REDIS_PORT`: Redis port; specify multiple instances with comma-separated value (default: `6379`)
 * `STATSD_HOST`: StatsD hostname/IP (default: `localhost`)
 * `STATSD_PORT`: StatsD port (default: `8125`)
+* `STATSD_PREFIX`: StatsD prefix; `-<port>` will be appended if multiple instances specified (default: `redis`)
 * `PERIOD`: Polling period in second (default: `30`)
 * `VERBOSE`: Print metrics to stdout (default: `false`)

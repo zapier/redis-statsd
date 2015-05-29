@@ -7,9 +7,9 @@ import time
 from redis.client import StrictRedis
 
 REDIS_HOST = os.environ.get('REDIS_HOST', 'localhost')
-REDIS_PORT = int(os.environ.get('REDIS_PORT', 6379))
+REDIS_PORT = os.environ.get('REDIS_PORT', '6379')
 STATSD_HOST = os.environ.get('STATSD_HOST', 'localhost')
-STATSD_PORT = int(os.environ.get('STATSD_PORT', 8125))
+STATSD_PORT = os.environ.get('STATSD_PORT', 8125)
 STATSD_PREFIX = os.environ.get('STATSD_PREFIX', 'redis')
 PERIOD = int(os.environ.get('PERIOD', 30))
 
@@ -95,41 +95,48 @@ def main():
             time.sleep(5)
 
 def run_once():
-    redis = StrictRedis(REDIS_HOST, REDIS_PORT)
+    for port in REDIS_PORT.split(','):
 
-    stats = redis.info()
-    stats['keyspaces'] = {}
+        if ',' in REDIS_PORT:
+            statsd_prefix = STATSD_PREFIX + '-{}'.format(port)
+        else:
+            statsd_prefix = STATSD_PREFIX
 
-    for key in stats.keys():
-        if key.startswith('db'):
-            stats['keyspaces'][key] = stats[key]
-            del stats[key]
+        redis = StrictRedis(REDIS_HOST, port)
 
-    out_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        stats = redis.info()
+        stats['keyspaces'] = {}
 
-    for g in GAUGES:
-        if g in stats:
-            send_metric(out_sock, '{}.{}'.format(STATSD_PREFIX, g), 'g', float(stats[g]))
+        for key in stats.keys():
+            if key.startswith('db'):
+                stats['keyspaces'][key] = stats[key]
+                del stats[key]
 
-    for c in COUNTERS:
-        if c in stats:
-            send_metric(out_sock, '{}.{}'.format(STATSD_PREFIX, c), 'c', float(stats[c]))
+        out_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
-    for ks in stats['keyspaces']:
-        for kc in KEYSPACE_COUNTERS:
-            if kc in stats['keyspaces'][ks]:
-                send_metric(out_sock, '{}.keyspace.{}'.format(
-                    STATSD_PREFIX, kc), 'c',
-                float(stats['keyspaces'][ks][kc]))
+        for g in GAUGES:
+            if g in stats:
+                send_metric(out_sock, '{}.{}'.format(statsd_prefix, g), 'g', float(stats[g]))
 
-        for kg in KEYSPACE_GAUGES:
-            if kg in stats['keyspaces'][ks]:
-                send_metric(out_sock, '{}.keyspace.{}'.format(
-                    STATSD_PREFIX, kg), 'g',
-                    float(stats['keyspaces'][ks][kg]))
+        for c in COUNTERS:
+            if c in stats:
+                send_metric(out_sock, '{}.{}'.format(statsd_prefix, c), 'c', float(stats[c]))
 
-    out_sock.close()
-    time.sleep(PERIOD)
+        for ks in stats['keyspaces']:
+            for kc in KEYSPACE_COUNTERS:
+                if kc in stats['keyspaces'][ks]:
+                    send_metric(out_sock, '{}.keyspace.{}'.format(
+                        STATSD_PREFIX, kc), 'c',
+                    float(stats['keyspaces'][ks][kc]))
+
+            for kg in KEYSPACE_GAUGES:
+                if kg in stats['keyspaces'][ks]:
+                    send_metric(out_sock, '{}.keyspace.{}'.format(
+                        STATSD_PREFIX, kg), 'g',
+                        float(stats['keyspaces'][ks][kg]))
+
+        out_sock.close()
+        time.sleep(PERIOD)
 
 if __name__ == '__main__':
     main()
